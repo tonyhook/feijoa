@@ -1,0 +1,5 @@
+[project]
+name = "feijoa"
+version = "0.1.0"
+description = "An AI-native application built from scratch"
+requires-python = ">=3.10"
