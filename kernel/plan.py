@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import List
 
+from kernel.result import Result
+
 
 class State(Enum):
     PENDING = auto()
@@ -50,6 +52,8 @@ class NotApplicable:
 @dataclass
 class PlanHolder:
     payload: Plan | NotApplicable
+    simulation_result: List[Result]
+    execution_result: List[Result]
     id = uuid.uuid4().hex
     state: State = State.PENDING
 

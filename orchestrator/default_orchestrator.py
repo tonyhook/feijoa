@@ -1,4 +1,6 @@
-from kernel.event import Event, EventType
+from typing import cast
+
+from kernel.event import Event, EventType, PlanEvent
 from kernel.kernel import Kernel
 from kernel.phase import Phase
 from orchestrator.orchestrator import Orchestrator
@@ -6,8 +8,8 @@ from orchestrator.orchestrator import Orchestrator
 
 class DefaultOrchestrator(Orchestrator):
 
-    def _all_planner_responsed(self) -> bool:
-        return True
+    def _all_planner_responsed(self, kernel: Kernel) -> bool:
+        return len(kernel.plans) + len(kernel.not_applicable_plans) == len(kernel.planners)
 
     def handle(self, kernel: Kernel):
         # event from judge / simulator / executor, transition phase accordingly
@@ -27,8 +29,10 @@ class DefaultOrchestrator(Orchestrator):
             elif kernel.phase == Phase.EXECUTION and event.type == EventType.EXECUTION_RESULT:
                 # TODO: we can have more complex logic here, e.g. if the execution result is bad, we can go back to decision phase
                 kernel.set_phase(Phase.FINISHED)
+                planEvent = cast(PlanEvent, event)
+                kernel.output = planEvent.payload.execution_result[0].output.get("answer", "N/A")
 
         # event from planners, transition phase accordingly
         if kernel.phase == Phase.PLANNING:
-            if self._all_planner_responsed():
+            if self._all_planner_responsed(kernel):
                 kernel.set_phase(Phase.DECISION)
