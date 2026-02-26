@@ -8,7 +8,9 @@ from kernel.event import Event, EventType, PlanEvent
 from kernel.phase import Phase
 from kernel.plan import NotApplicable, Plan, PlanHolder
 from kernel.tool import Tool
+from memory.memory import Memory
 from orchestrator.orchestrator import Orchestrator
+from tracing.trace import Trace
 
 
 parser = argparse.ArgumentParser(description = "Set the logging level via command line")
@@ -32,12 +34,14 @@ class Kernel:
     tools: Dict[str, Tool]
     plans: Dict[str, PlanHolder]
     not_applicable_plans: Dict[str, PlanHolder]
+    memory: Memory | None
+    trace: Trace | None
 
     ## one single round conversation
     input: str
     output: str
 
-    def __init__(self):
+    def __init__(self, memory: Memory | None = None, trace: Trace | None = None):
         self.phase = Phase.PLANNING
         self.events = []
         self.agents = {}
@@ -45,10 +49,14 @@ class Kernel:
         self.tools = {}
         self.plans = {}
         self.not_applicable_plans = {}
+        self.memory = memory
+        self.trace = trace
         self.input = ""
         self.output = ""
 
     def emit(self, event: Event):
+        if self.trace:
+            self.trace.record("EVENT_EMITTED", {"sender": event.sender, "type": event.type.name, "payload": str(event.payload)})
         self.events.append(event)
 
         if event.type == EventType.PLAN_PROPOSED:
@@ -72,6 +80,8 @@ class Kernel:
 
     def set_phase(self, phase):
         logger.info(f"Transitioning from {self.phase} to {phase}")
+        if self.trace:
+            self.trace.record("PHASE_TRANSITION", {"from": self.phase.name, "to": phase.name})
         self.phase = phase
 
     def register_agent(self, agent: Agent):
@@ -88,6 +98,8 @@ class Kernel:
 
     def run(self, orchestrator: Orchestrator, max_steps: int = 5):
         self.input = input(">>> ")
+        if self.memory:
+            self.memory.add_message("user", self.input)
 
         """
         event loop
@@ -104,3 +116,5 @@ class Kernel:
             logger.info(f"Step {steps} completed. Current phase: {self.phase}")
 
         print(self.output)
+        if self.memory and self.output:
+            self.memory.add_message("assistant", self.output)
