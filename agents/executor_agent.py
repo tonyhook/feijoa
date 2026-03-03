@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, cast
 
 from kernel.agent import Agent
-from kernel.event import EventType, PlanEvent
+from kernel.event import ClarificationEvent, EventType, PlanEvent
 from kernel.phase import Phase
 from kernel.plan import Plan, State
 from kernel.tool import Tool
@@ -41,6 +41,17 @@ class ExecutorAgent(Agent):
                 planHolder.simulation_result = results
                 planHolder.transition_to(State.SIMULATED)
             else:
+                # Check if any result needs clarification before committing
+                result_needing_clarification = next((r for r in results if r.clarification), None)
+                if result_needing_clarification:
+                    planHolder.transition_to(State.FAILED)
+                    kernel.emit(ClarificationEvent(
+                        sender = self.name,
+                        type = EventType.CLARIFICATION_NEEDED,
+                        payload = result_needing_clarification.clarification
+                    ))
+                    return
+
                 planHolder.execution_result = results
                 if success:
                     planHolder.transition_to(State.EXECUTED)

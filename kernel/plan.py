@@ -41,6 +41,7 @@ class Step:
 class Plan:
     planner: str      # agent name
     steps: List[Step] # plan steps, each step corresponds to one tool call
+    priority: int = 0 # higher priority wins during judging
 
 @dataclass
 class NotApplicable:

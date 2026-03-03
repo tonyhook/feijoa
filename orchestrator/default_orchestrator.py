@@ -25,6 +25,11 @@ class DefaultOrchestrator(Orchestrator):
                 # TODO: we can have more complex logic here, e.g. if the simulation result is bad, we can go back to decision phase
                kernel.set_phase(Phase.EXECUTION)
 
+            # execution needs clarification, transition to clarification phase
+            elif kernel.phase == Phase.EXECUTION and event.type == EventType.CLARIFICATION_NEEDED:
+                kernel.pending_clarification = event.payload
+                kernel.set_phase(Phase.CLARIFICATION)
+
             # execution finished, transition to finished
             elif kernel.phase == Phase.EXECUTION and event.type == EventType.EXECUTION_RESULT:
                 # TODO: we can have more complex logic here, e.g. if the execution result is bad, we can go back to decision phase

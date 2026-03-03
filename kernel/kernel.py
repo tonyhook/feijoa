@@ -3,6 +3,7 @@ from typing import Dict, List, cast
 
 from agents.planner_agent import PlannerAgent
 from kernel.agent import Agent
+from kernel.clarification import Clarification, ClarificationOption
 from kernel.event import Event, EventType, PlanEvent
 from kernel.phase import Phase
 from kernel.plan import NotApplicable, Plan, PlanHolder
@@ -24,6 +25,8 @@ class Kernel:
     not_applicable_plans: Dict[str, PlanHolder]
     memory: Memory | None
     trace: Trace | None
+    clarification_resolved: ClarificationOption | None
+    pending_clarification: Clarification | None
 
     ## one single round conversation
     input: str
@@ -39,6 +42,8 @@ class Kernel:
         self.not_applicable_plans = {}
         self.memory = memory
         self.trace = trace
+        self.clarification_resolved = None
+        self.pending_clarification = None
         self.input = ""
         self.output = ""
 
@@ -84,16 +89,38 @@ class Kernel:
             raise ValueError(f"Tool {tool.name} already registered")
         self.tools[tool.name] = tool
 
-    def run(self, orchestrator: Orchestrator, max_steps: int = 5):
+    def _reset_round(self):
+        """Clear per-round state so PLANNING can restart cleanly."""
+        self.events = []
+        self.plans = {}
+        self.not_applicable_plans = {}
+        self.phase = Phase.PLANNING
+
+    def run(self, orchestrator: Orchestrator, max_steps: int = 10):
+        self.clarification_resolved = None
         self.input = input(">>> ")
         if self.memory:
             self.memory.add_message("user", self.input)
 
-        """
-        event loop
-        """
         steps = 0
         while self.phase != Phase.FINISHED and steps < max_steps:
+
+            if self.phase == Phase.CLARIFICATION:
+                clarification = self.pending_clarification
+                if clarification:
+                    print(clarification.question)
+                    for i, opt in enumerate(clarification.options, 1):
+                        print(f"  {i}. {opt.label}")
+                    choice = input(">>> ").strip()
+                    if choice.isdigit() and 1 <= int(choice) <= len(clarification.options):
+                        self.clarification_resolved = clarification.options[int(choice) - 1]
+                    else:
+                        self.input = choice
+                        self.clarification_resolved = None
+                    self.pending_clarification = None
+                    self._reset_round()
+                continue  # re-enter loop in PLANNING phase
+
             for agent in self.agents.values():
                 if self.phase in agent.allowed_phases:
                     logger.info(f"AGENT_STEP: {{'agent': '{agent.name}', 'phase': '{self.phase.name}'}}")

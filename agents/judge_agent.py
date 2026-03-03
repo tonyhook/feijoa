@@ -1,9 +1,9 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from kernel.agent import Agent
 from kernel.event import EventType, PlanEvent
 from kernel.phase import Phase
-from kernel.plan import State
+from kernel.plan import Plan, State
 
 if TYPE_CHECKING:
     from kernel.kernel import Kernel
@@ -18,10 +18,7 @@ class JudgeAgent(Agent):
             if not candidates:
                 return
 
-            """
-            TODO: Implement more sophisticated judging criteria
-            """
-            winner = candidates[0]
+            winner = max(candidates, key = lambda p: cast(Plan, p.payload).priority)
 
             for plan in candidates:
                 if plan != winner:

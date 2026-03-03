@@ -6,4 +6,5 @@ class Phase(Enum):
     DECISION = auto()
     SIMULATION = auto()
     EXECUTION = auto()
+    CLARIFICATION = auto()
     FINISHED = auto()
